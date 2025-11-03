@@ -161,7 +161,8 @@ async def analyze(
             await audit_failed(analysis_id, str(e))
         except Exception as ie:
             logger.warning(f"Audit failed write error: {ie}")
-        raise HTTPException(status_code=503, detail="Downstream AI unavailable or invalid response")
+        # Surface the actual downstream error message to aid debugging
+        raise HTTPException(status_code=503, detail=str(e))
     except ValidationError as e:
         try:
             await audit_failed(analysis_id, str(e))

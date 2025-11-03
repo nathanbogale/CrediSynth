@@ -7,7 +7,7 @@ info:
     Outcomes: Faster decisions, consistent narratives across cases, robust audit trail,
     compliance alignment, and operational SLAs.
 servers:
-  - url: http://localhost:4000
+  - url: http://localhost:4010
 paths:
   /health:
     get:
@@ -59,10 +59,22 @@ paths:
                     $ref: "../examples/qaa_output_example.json"
         '422':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         '503':
           description: Downstream AI unavailable or invalid response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         '500':
           description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     QSEReportInput:
@@ -218,6 +230,11 @@ components:
           type: array
           items:
             type: string
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
     QAAQualitativeReport:
       type: object
       required:

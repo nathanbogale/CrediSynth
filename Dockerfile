@@ -18,7 +18,7 @@ COPY sample_request.json ./sample_request.json
 COPY README.md ./README.md
 COPY examples ./examples
 
-ENV MOCK_MODE=true \
+ENV MOCK_MODE=false \
     GEMINI_MODEL=gemini-1.5-pro
 
 EXPOSE 4000
