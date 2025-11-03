@@ -1,0 +1,253 @@
+openapi: 3.0.3
+info:
+  title: CrediSynth QAA API
+  version: 1.0.0
+  description: |
+    API-first service that synthesizes complex QSE JSON into a concise qualitative report.
+    Outcomes: Faster decisions, consistent narratives across cases, robust audit trail,
+    compliance alignment, and operational SLAs.
+servers:
+  - url: http://localhost:4000
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  version:
+                    type: string
+  /v1/analyze:
+    post:
+      summary: Analyze QSE report to produce qualitative synthesis
+      parameters:
+        - in: header
+          name: X-Correlation-ID
+          required: false
+          schema:
+            type: string
+          description: Optional correlation ID for audit/tracing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QSEReportInput"
+            examples:
+              complete_sample:
+                summary: Complete sample aligned to QSE output
+                value:
+                  $ref: "../sample_request.json"
+      responses:
+        '200':
+          description: Qualitative synthesis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QAAQualitativeReport"
+              examples:
+                example_response:
+                  summary: Example qualitative report
+                  value:
+                    $ref: "../examples/qaa_output_example.json"
+        '422':
+          description: Validation error
+        '503':
+          description: Downstream AI unavailable or invalid response
+        '500':
+          description: Internal server error
+components:
+  schemas:
+    QSEReportInput:
+      type: object
+      required: [request_id, customer_id]
+      properties:
+        request_id:
+          type: string
+        customer_id:
+          type: string
+        correlation_id:
+          type: string
+          nullable: true
+        credit_score:
+          type: number
+          nullable: true
+        risk_level:
+          type: string
+          nullable: true
+        default_probability:
+          type: number
+          format: float
+          nullable: true
+        model_version:
+          type: string
+          nullable: true
+        features_count:
+          type: integer
+          nullable: true
+        core_credit_performance:
+          type: object
+          additionalProperties: true
+          nullable: true
+        affordability_and_obligations:
+          type: object
+          additionalProperties: true
+          nullable: true
+        bank_and_mobile_money_dynamics:
+          type: object
+          additionalProperties: true
+          nullable: true
+        identity_and_fraud_intelligence:
+          type: object
+          additionalProperties: true
+          nullable: true
+        personal_and_professional_stability:
+          type: object
+          additionalProperties: true
+          nullable: true
+        contextual_and_macroeconomic_factors:
+          type: object
+          additionalProperties: true
+          nullable: true
+        product_specific_intelligence:
+          type: object
+          additionalProperties: true
+          nullable: true
+        business_and_receivables_finance:
+          type: object
+          additionalProperties: true
+          nullable: true
+        behavioral_intelligence:
+          type: object
+          additionalProperties: true
+          nullable: true
+        model_governance_and_monitoring:
+          type: object
+          additionalProperties: true
+          nullable: true
+        loan_details:
+          type: object
+          additionalProperties: true
+          nullable: true
+        additional_context:
+          type: object
+          additionalProperties: true
+          nullable: true
+        digital_behavioral_intelligence:
+          type: object
+          additionalProperties: true
+          nullable: true
+        feature_analysis:
+          type: object
+          additionalProperties: true
+          nullable: true
+        explainability:
+          type: object
+          properties:
+            risk_factors:
+              type: array
+              items:
+                $ref: "#/components/schemas/ShapFactor"
+            confidence_factors:
+              type: array
+              items:
+                $ref: "#/components/schemas/ShapFactor"
+            global_importance_order:
+              type: array
+              items:
+                type: string
+          nullable: true
+        risk_analysis:
+          type: object
+          properties:
+            scenarios:
+              type: array
+              items:
+                $ref: "#/components/schemas/RiskScenario"
+            default_probability:
+              type: number
+          nullable: true
+        nbe_compliance_status:
+          $ref: "#/components/schemas/NBECompliance"
+        additional_insights:
+          $ref: "#/components/schemas/AdditionalInsights"
+    ShapFactor:
+      type: object
+      properties:
+        name:
+          type: string
+        impact:
+          type: number
+        direction:
+          type: string
+          enum: [positive, negative]
+    RiskScenario:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum: [Low, Medium, High]
+    NBECompliance:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [COMPLIANT, NON_COMPLIANT]
+        reasons:
+          type: array
+          items:
+            type: string
+    AdditionalInsights:
+      type: object
+      properties:
+        notes:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+    QAAQualitativeReport:
+      type: object
+      required:
+        [analysis_id, qse_request_id, customer_id, executive_summary, ability_to_repay,
+         willingness_to_repay, key_risk_synthesis, key_strengths_synthesis,
+         nbe_compliance_summary, final_recommendation, recommendation_justification]
+      properties:
+        analysis_id:
+          type: string
+          description: Unique ID for this QAA transaction
+        qse_request_id:
+          type: string
+          description: Original request_id from QSE report
+        customer_id:
+          type: string
+          description: Customer ID from QSE report
+        executive_summary:
+          type: string
+        ability_to_repay:
+          type: string
+        willingness_to_repay:
+          type: string
+        key_risk_synthesis:
+          type: string
+        key_strengths_synthesis:
+          type: string
+        nbe_compliance_summary:
+          type: string
+        final_recommendation:
+          type: string
+          enum: [Approve, Approve with Conditions, Manual Review, Decline]
+        recommendation_justification:
+          type: string

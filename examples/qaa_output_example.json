@@ -1,0 +1,13 @@
+{
+  "analysis_id": "qaa_20251009_000987",
+  "qse_request_id": "test_complete_164_features_001",
+  "customer_id": "customer_complete_164_test_001",
+  "executive_summary": "Applicant exhibits strong capacity and verified identity, with consistent salary inflows and low delinquency. Macroeconomic inflation and sector cyclicality present moderate external risk, but residual income and cash buffers are adequate. Recommendation: approve with conditions focused on monitoring liquidity and spending patterns.",
+  "ability_to_repay": "Residual income of ETB 8,500 and low installment-to-income ratio (0.08) indicate ample buffer. Salary inflow consistency (85.5) and average daily balance of ETB 8,500 support stable cash flows; overdraft usage is limited (5 days) and NSF events are rare (1 in 6 months).",
+  "willingness_to_repay": "Clean recent payment history with zero 30/60/90-day delinquencies and verified KYC/fayda. Behavioral consistency (75.5), conscientiousness (78), and peer vouching (2) suggest high intent to repay; rent and utilities show on-time behavior (≥0.95).",
+  "key_risk_synthesis": "External inflation (18.5%) and sector cyclicality (45) may pressure affordability; modest weekend social spending volatility (0.22) and mobile money velocity (0.25) warrant monitoring. Overdraft usage (5 days) is present but contained.",
+  "key_strengths_synthesis": "Verified identity and enhanced KYC, stable income with consistent deposits, strong savings behavior (72.5), positive on-time utility and telecom payment rates, and low DTI/residual income strength.",
+  "nbe_compliance_summary": "COMPLIANT",
+  "final_recommendation": "Approve with Conditions",
+  "recommendation_justification": "Approve given strong capacity, verified identity, and positive behavioral indicators. Set conditions: monitor cash flow volatility and overdraft usage; reassess affordability if inflation materially increases."
+}
