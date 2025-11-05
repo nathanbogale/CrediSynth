@@ -17,5 +17,14 @@ class Settings:
 
     REQUEST_TIMEOUT_SECONDS: float = float(os.getenv("REQUEST_TIMEOUT_SECONDS", "12.0"))
 
+    # Optional upstream explainability service integration
+    EXPLAINABILITY_ENABLED: bool = os.getenv("EXPLAINABILITY_ENABLED", "false").lower() in ("1", "true", "yes")
+    EXPLAINABILITY_URL: str | None = os.getenv("EXPLAINABILITY_URL")
+
+    # Optional ensemble toggling: 'single' (default) or 'multi'
+    ENSEMBLE_MODE: str = os.getenv("ENSEMBLE_MODE", "single")
+    # Comma-separated extra model identifiers to reflect in ensemble_details when multi-mode is enabled
+    ENSEMBLE_EXTRA_MODELS: list[str] = [m.strip() for m in os.getenv("ENSEMBLE_EXTRA_MODELS", "").split(",") if m.strip()]
+
 
 settings = Settings()

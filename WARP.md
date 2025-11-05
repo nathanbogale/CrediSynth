@@ -13,12 +13,12 @@ pip install -r requirements.txt
 
 # Run API in mock mode (no Gemini API calls)
 $env:MOCK_MODE="true"
-uvicorn app.main:app --host 0.0.0.0 --port 4000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 7000 --reload
 
 # Run API with Gemini integration
 $env:MOCK_MODE="false"
 $env:GEMINI_API_KEY="your-key-here"
-uvicorn app.main:app --host 0.0.0.0 --port 4000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 7000 --reload
 ```
 
 ### Local Development (macOS/Linux bash)
@@ -28,7 +28,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 export MOCK_MODE=true
-uvicorn app.main:app --host 0.0.0.0 --port 4000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 7000 --reload
 ```
 
 ### Management Scripts (Windows)
@@ -69,10 +69,10 @@ bash ./scripts/manage.sh --action test
 docker build -t credisynth-qaa:local .
 
 # Run
-docker run --rm -p 4000:4000 --env-file .env.example credisynth-qaa:local
+docker run --rm -p 7000:7000 --env-file .env.example credisynth-qaa:local
 
 # Test
-curl -sS -X POST http://127.0.0.1:4000/v1/analyze \
+curl -sS -X POST http://127.0.0.1:7000/v1/analyze \
   -H "Content-Type: application/json" \
   --data @sample_request.json | jq
 ```
@@ -80,7 +80,7 @@ curl -sS -X POST http://127.0.0.1:4000/v1/analyze \
 ### API Testing
 ```bash
 # Health check
-curl http://localhost:4000/health
+curl http://localhost:7000/health
 
 # Analyze request (Windows)
 curl -X POST http://localhost:4000/v1/analyze ^
@@ -88,13 +88,13 @@ curl -X POST http://localhost:4000/v1/analyze ^
   --data-binary @sample_request.json
 
 # Analyze request (Unix)
-curl -X POST http://localhost:4000/v1/analyze \
+curl -X POST http://localhost:7000/v1/analyze \
   -H "Content-Type: application/json" \
   -H "X-Correlation-ID: test-correlation-123" \
   --data-binary @sample_request.json
 
 # Metrics
-curl http://localhost:4000/metrics
+curl http://localhost:7000/metrics
 ```
 
 ## Architecture

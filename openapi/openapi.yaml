@@ -7,10 +7,12 @@ info:
     Outcomes: Faster decisions, consistent narratives across cases, robust audit trail,
     compliance alignment, and operational SLAs.
 servers:
-  - url: http://localhost:4010
+  - url: http://localhost:7010
 paths:
   /health:
     get:
+      tags: [Health]
+      summary: Service health
       summary: Health check
       responses:
         '200':
@@ -26,7 +28,8 @@ paths:
                     type: string
   /v1/analyze:
     post:
-      summary: Analyze QSE report to produce qualitative synthesis
+      tags: [Analysis]
+      summary: Analyze QSE report to produce extended qualitative synthesis
       parameters:
         - in: header
           name: X-Correlation-ID
@@ -47,16 +50,16 @@ paths:
                   $ref: "../sample_request.json"
       responses:
         '200':
-          description: Qualitative synthesis
+          description: Extended qualitative synthesis
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/QAAQualitativeReport"
+                $ref: "#/components/schemas/QAAExtendedResponse"
               examples:
                 example_response:
-                  summary: Example qualitative report
+                  summary: Example extended qualitative report
                   value:
-                    $ref: "../examples/qaa_output_example.json"
+                    $ref: "../sample_response.json"
         '422':
           description: Validation error
           content:
@@ -87,6 +90,15 @@ components:
           type: string
         correlation_id:
           type: string
+          nullable: true
+        locale:
+          type: string
+          description: BCP 47 tag like 'en', 'am', 'en-US'
+          nullable: true
+        output_style:
+          type: string
+          enum: [short, standard, detailed]
+          description: Controls verbosity of qualitative text output
           nullable: true
         credit_score:
           type: number
@@ -268,3 +280,173 @@ components:
           enum: [Approve, Approve with Conditions, Manual Review, Decline]
         recommendation_justification:
           type: string
+    QAAExtendedResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        customer_id:
+          type: string
+        correlation_id:
+          type: string
+          nullable: true
+        credit_score:
+          type: number
+          nullable: true
+        risk_level:
+          type: string
+          nullable: true
+        risk_category:
+          type: string
+          nullable: true
+        default_probability:
+          type: number
+          nullable: true
+        confidence_score:
+          type: number
+          nullable: true
+        model_type_used:
+          type: string
+          nullable: true
+        model_version:
+          type: string
+          nullable: true
+        features_count:
+          type: integer
+          nullable: true
+        ethiopian_market_optimized:
+          type: boolean
+          nullable: true
+        feature_analysis:
+          type: object
+          additionalProperties: true
+          nullable: true
+        explainability:
+          type: object
+          additionalProperties: true
+          nullable: true
+        risk_analysis:
+          type: object
+          additionalProperties: true
+          nullable: true
+        ensemble_details:
+          type: object
+          additionalProperties: true
+          nullable: true
+        nbe_compliance_status:
+          type: object
+          additionalProperties: true
+          nullable: true
+        nbe_compliance:
+          type: object
+          additionalProperties: true
+          nullable: true
+        processing_metadata:
+          type: object
+          additionalProperties: true
+          nullable: true
+        processing_time_ms:
+          type: integer
+          nullable: true
+        timestamp:
+          type: string
+          nullable: true
+        additional_insights:
+          type: object
+          additionalProperties: true
+          nullable: true
+        qaa_report:
+          $ref: "#/components/schemas/QAAQualitativeReport"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/LinkItem"
+    LinkItem:
+      type: object
+      required: [rel, href]
+      properties:
+        rel:
+          type: string
+        href:
+          type: string
+        title:
+          type: string
+          nullable: true
+        scores:
+          type: object
+          properties:
+            credit_score:
+              type: integer
+              minimum: 300
+              maximum: 850
+            default_probability:
+              type: number
+            overall_risk_score:
+              type: number
+            ensemble_confidence:
+              type: number
+            approval_probability:
+              type: number
+  /v1/analyze/async:
+    post:
+      tags: [Analysis]
+      summary: Submit analysis job asynchronously
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QSEReportInput"
+      responses:
+        '202':
+          description: Job queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                  status:
+                    type: string
+  /v1/jobs/{job_id}:
+    get:
+      tags: [Analysis]
+      summary: Poll an async job status
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                  status:
+                    type: string
+  /v1/models:
+    get:
+      tags: [Explainability]
+      summary: List active model version and health
+      responses:
+        '200':
+          description: Model info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  active_model:
+                    type: string
+                  last_refresh:
+                    type: string
+                    nullable: true
+                  health:
+                    type: string

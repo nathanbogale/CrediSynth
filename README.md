@@ -11,7 +11,7 @@ python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
 set MOCK_MODE=true
-uvicorn app.main:app --host 0.0.0.0 --port 4000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 7000 --reload
 ```
 
 API
@@ -24,8 +24,8 @@ Notes
 
 Docker
 - Build: `docker build -t credisynth-qaa:local .`
-- Run: `docker run --rm -p 4000:4000 --env-file .env.example credisynth-qaa:local`
-- cURL: `curl -sS -X POST http://127.0.0.1:4000/v1/analyze -H "Content-Type: application/json" --data @sample_request.json | jq`
+- Run: `docker run --rm -p 7000:7000 --env-file .env.example credisynth-qaa:local`
+- cURL: `curl -sS -X POST http://127.0.0.1:7000/v1/analyze -H "Content-Type: application/json" --data @sample_request.json | jq`
 
 Observability & Auditing
 - Metrics: Prometheus at `GET /metrics` (enabled automatically).
@@ -51,7 +51,7 @@ macOS/Linux (bash)
 
 Example
 ```
-curl -X POST http://localhost:4000/v1/analyze \
+curl -X POST http://localhost:7000/v1/analyze \
   -H "Content-Type: application/json" \
   --data-binary @t:/CrediSynth/sample_request.json
 ```

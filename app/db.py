@@ -81,6 +81,17 @@ def has_db() -> bool:
     return _sessionmaker is not None
 
 
+async def get_analysis(analysis_id: str) -> Optional[dict]:
+    """Retrieve stored analysis response by ID if auditing is enabled."""
+    if not has_db():
+        return None
+    async with _sessionmaker() as session:
+        rec = await session.get(AnalysisRecord, analysis_id)
+        if rec and rec.response_json:
+            return rec.response_json
+        return None
+
+
 async def audit_created(analysis_id: str, correlation_id: Optional[str], request_json: dict) -> None:
     if not has_db():
         return

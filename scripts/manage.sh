@@ -7,7 +7,7 @@ ACTION="start"        # build | start | stop | restart | status | logs | test
 ENV_FILE=".env"
 TAG="credisynth-qaa:local"
 CONTAINER="credisynth-qaa"
-PORT="4000"
+PORT="7000"
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOGS_DIR="$ROOT_DIR/logs"

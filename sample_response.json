@@ -1,0 +1,359 @@
+{
+  "request_id": "string",
+  "customer_id": "string",
+  "correlation_id": "string",
+  "credit_score": 767.5,
+  "risk_level": "medium",
+  "risk_category": "medium",
+  "default_probability": 0.15,
+  "confidence_score": 0.95,
+  "model_type_used": "",
+  "model_version": "",
+  "features_count": 164,
+  "ethiopian_market_optimized": true,
+  "feature_analysis": {
+    "total_features_analyzed": 144,
+    "key_features": {
+      "age": 18,
+      "monthly_income": 1,
+      "debt_to_income_ratio": 0,
+      "employment_years": 70,
+      "loan_amount": 1,
+      "savings_balance": 0,
+      "credit_history_length_months": 0,
+      "number_of_credit_accounts": 0,
+      "financial_discipline_score": 75,
+      "adaptability_score": 120,
+      "willingness_score": 60,
+      "digital_engagement_score": 100,
+      "behavioral_consistency_score": 100
+    },
+    "derived_metrics": {
+      "debt_to_income_ratio": 0,
+      "loan_to_income_ratio": 0.08333333333333333,
+      "savings_to_income_ratio": 0,
+      "affordability_ratio": 0,
+      "payment_capacity_etb": 1,
+      "liquidity_ratio": 0,
+      "financial_stability_index": 0.5950000000000001
+    },
+    "feature_categories": {
+      "demographic_features": 5,
+      "financial_features": 9,
+      "behavioral_features": 6,
+      "digital_features": 5,
+      "credit_history_features": 11,
+      "psychometric_features": 3,
+      "transactional_features": 6
+    }
+  },
+  "explainability": {
+    "shap_analysis": {
+      "global_importance": [
+        {
+          "feature": "monthly_income_etb",
+          "importance": 0.25
+        },
+        {
+          "feature": "debt_to_income_ratio",
+          "importance": 0.2
+        },
+        {
+          "feature": "years_in_profession",
+          "importance": 0.15
+        },
+        {
+          "feature": "savings_behavior_score",
+          "importance": 0.14
+        },
+        {
+          "feature": "projected_installment",
+          "importance": 0.12
+        },
+        {
+          "feature": "spending_habit_consistency_score",
+          "importance": 0.12
+        },
+        {
+          "feature": "sms_active_lenders_count_90d",
+          "importance": 0.11
+        },
+        {
+          "feature": "credit_history_length_months",
+          "importance": 0.1
+        },
+        {
+          "feature": "age",
+          "importance": 0.1
+        },
+        {
+          "feature": "sms_loan_rejection_count_90d",
+          "importance": 0.1
+        },
+        {
+          "feature": "app_engagement_frequency_30d",
+          "importance": 0.09
+        },
+        {
+          "feature": "momo_cash_out_velocity_48hr",
+          "importance": 0.09
+        },
+        {
+          "feature": "anonymized_peer_default_rate",
+          "importance": 0.09
+        },
+        {
+          "feature": "worst_status_last_12m",
+          "importance": 0.08
+        },
+        {
+          "feature": "contact_list_entropy_score",
+          "importance": 0.08
+        },
+        {
+          "feature": "peer_vouching_count",
+          "importance": 0.08
+        },
+        {
+          "feature": "app_gambling_count",
+          "importance": 0.07
+        },
+        {
+          "feature": "push_notification_interaction_rate",
+          "importance": 0.06
+        },
+        {
+          "feature": "airtime_purchase_pattern_score",
+          "importance": 0.06
+        },
+        {
+          "feature": "discretionary_spend_ratio_90d",
+          "importance": 0.05
+        },
+        {
+          "feature": "post_payday_spending_spike_ratio",
+          "importance": 0.05
+        }
+      ],
+      "local_explanation": "For this customer, low debt-to-income ratio are the primary positive factors. while low income level, limited cash reserves represent the main risk factors.",
+      "description": "SHAP (SHapley Additive exPlanations) values provide insights into how each feature contributes to the final credit score prediction. Positive values increase the score, while negative values decrease it.",
+      "confidence_factors": [
+        "Low debt-to-income ratio"
+      ],
+      "risk_factors": [
+        "Low income level",
+        "Limited cash reserves",
+        "Limited credit history"
+      ]
+    },
+    "feature_importance": [
+      {
+        "feature": "monthly_income",
+        "importance": 0.25,
+        "impact": "neutral"
+      },
+      {
+        "feature": "debt_to_income_ratio",
+        "importance": 0.2,
+        "impact": "positive"
+      },
+      {
+        "feature": "employment_years",
+        "importance": 0.15,
+        "impact": "positive"
+      },
+      {
+        "feature": "loan_amount",
+        "importance": 0.12,
+        "impact": "neutral"
+      },
+      {
+        "feature": "age",
+        "importance": 0.1,
+        "impact": "neutral"
+      }
+    ],
+    "explanation_available": true,
+    "interpretation": "The model predicts a credit score of 767.50 based primarily on financial stability indicators. Debt To Income Ratio And Employment Years are the strongest positive factors, with well-balanced risk factors. Digital behavioral analysis shows low app engagement, moderate financial discipline, and moderate social stability."
+  },
+  "risk_analysis": {
+    "overall_risk_score": 22.916999999999998,
+    "risk_dimensions": {
+      "credit_risk": 15,
+      "liquidity_risk": 50,
+      "capacity_risk": 50,
+      "character_risk": 0,
+      "financial_risk": 50,
+      "behavioral_risk": 0,
+      "market_risk": 0.4,
+      "operational_risk": 0.8
+    },
+    "risk_scenarios": [
+      {
+        "scenario": "base_case",
+        "probability": 0.7,
+        "description": "Current economic conditions continue",
+        "expected_default_rate": 0.15,
+        "impact": "medium"
+      },
+      {
+        "scenario": "economic_downturn",
+        "probability": 0.2,
+        "description": "Economic recession scenario",
+        "expected_default_rate": 0.10049999999999999,
+        "impact": "high"
+      },
+      {
+        "scenario": "income_reduction",
+        "probability": 0.15,
+        "description": "Customer income decreases by 25%",
+        "expected_default_rate": 0.22499999999999998,
+        "impact": "high"
+      },
+      {
+        "scenario": "interest_rate_increase",
+        "probability": 0.3,
+        "description": "Interest rates increase by 2-3%",
+        "expected_default_rate": 0.15,
+        "impact": "medium"
+      }
+    ],
+    "risk_mitigation": [
+      {
+        "category": "income_verification",
+        "recommendation": "Verify employment and income stability",
+        "priority": "high"
+      },
+      {
+        "category": "collateral_assessment",
+        "recommendation": "Current collateral arrangement is adequate",
+        "priority": "low"
+      },
+      {
+        "category": "emergency_fund",
+        "recommendation": "Build emergency savings equivalent to 3-6 months of expenses",
+        "priority": "high"
+      },
+      {
+        "category": "debt_management",
+        "recommendation": "Maintain current debt levels",
+        "priority": "low"
+      }
+    ],
+    "risk_factors": [
+      "Below-average income level"
+    ],
+    "protective_factors": [
+      "Manageable debt levels"
+    ]
+  },
+  "ensemble_details": {
+    "features_analyzed": 144,
+    "feature_categories": {
+      "financial_features": 45,
+      "behavioral_features": 38,
+      "demographic_features": 25,
+      "transactional_features": 52,
+      "credit_history_features": 53
+    },
+    "ensemble_confidence": 0.95,
+    "individual_predictions": {
+      "xgboost": 767.5,
+      "lightgbm": 767.5,
+      "neural_network": 767.5,
+      "lstm": 767.5
+    },
+    "consensus_score": 1,
+    "diversity_index": 0,
+    "stability_metric": 0.975
+  },
+  "nbe_compliance_status": {
+    "overall_compliant": false,
+    "compliance_score": 70,
+    "salary_rule_compliant": true,
+    "amount_rule_compliant": false,
+    "interest_rate_compliant": true,
+    "recommended_interest_rate": 0.18909090909090906,
+    "max_affordable_payment_etb": 0.3333333333333333,
+    "proposed_payment_etb": 0,
+    "compliance_details": {
+      "nbe_salary_rule": "Compliant with 1/3 salary rule - monthly payment within acceptable limits",
+      "nbe_minimum_amount": "NON-COMPLIANT: Loan amount outside NBE limits (1,000 - 5,000,000 ETB)",
+      "nbe_interest_rate": "Interest rate complies with NBE regulations (12-25% range)"
+    },
+    "recommendations": [
+      "Maintain current payment schedule",
+      "Consider additional income verification"
+    ],
+    "regulatory_notes": [
+      "Customer requires compliance adjustments to meet NBE criteria",
+      "Loan-to-income ratio within acceptable limits",
+      "Employment verification completed as per NBE guidelines",
+      "Interest rate cap compliance verified (12-25% range)",
+      "Enhanced KYC documentation recommended"
+    ]
+  },
+  "nbe_compliance": {
+    "overall_compliant": false,
+    "compliance_score": 70,
+    "salary_rule_compliant": true,
+    "amount_rule_compliant": false,
+    "interest_rate_compliant": true,
+    "recommended_interest_rate": 0.18909090909090906,
+    "max_affordable_payment_etb": 0.3333333333333333,
+    "proposed_payment_etb": 0,
+    "compliance_details": {
+      "nbe_salary_rule": "Compliant with 1/3 salary rule - monthly payment within acceptable limits",
+      "nbe_minimum_amount": "NON-COMPLIANT: Loan amount outside NBE limits (1,000 - 5,000,000 ETB)",
+      "nbe_interest_rate": "Interest rate complies with NBE regulations (12-25% range)"
+    },
+    "recommendations": [
+      "Maintain current payment schedule",
+      "Consider additional income verification"
+    ],
+    "regulatory_notes": [
+      "Customer requires compliance adjustments to meet NBE criteria",
+      "Loan-to-income ratio within acceptable limits",
+      "Employment verification completed as per NBE guidelines",
+      "Interest rate cap compliance verified (12-25% range)",
+      "Enhanced KYC documentation recommended"
+    ]
+  },
+  "processing_metadata": {
+    "timestamp": "2025-10-27T20:19:00.581689",
+    "processing_time_ms": 928,
+    "data_quality_score": 1.0375,
+    "feature_completeness": 1.0625
+  },
+  "processing_time_ms": 928,
+  "timestamp": "2025-10-27T20:19:00.581719",
+  "additional_insights": {
+    "market_context": {
+      "ethiopian_market_percentile": 91.65683210574296,
+      "peer_comparison": "Well above average for similar demographic (string in string)",
+      "market_trends": "Challenging credit environment",
+      "economic_indicators": {
+        "inflation_impact": "low",
+        "currency_stability": "stable",
+        "employment_market": "challenging"
+      }
+    },
+    "lending_recommendations": {
+      "recommended_loan_amount": 1000,
+      "suggested_interest_rate": 0.13949999999999999,
+      "repayment_period_months": 60,
+      "collateral_requirement": "standard",
+      "approval_probability": 0.7224999999999999
+    },
+    "model_performance": {
+      "accuracy": 0.35365853658536583,
+      "precision": 0.35365853658536583,
+      "recall": 0.10583941605839416,
+      "f1_score": 0.16292134831460675,
+      "auc_roc": 0.9242642646889475,
+      "calibration_score": 0.9673659946995696,
+      "feature_stability": 0.92,
+      "prediction_consistency": 0.8
+    }
+  }
+}

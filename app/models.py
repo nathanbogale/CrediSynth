@@ -41,6 +41,12 @@ class QSEReportInput(BaseModel):
     customer_id: str
     correlation_id: Optional[str] = None
 
+    # UX tailoring
+    locale: Optional[str] = Field(None, description="BCP 47 tag like 'en', 'am', 'en-US'")
+    output_style: Optional[Literal["short", "standard", "detailed"]] = Field(
+        None, description="Controls verbosity of qualitative text output"
+    )
+
     # Optional governance fields if provided by QSE
     credit_score: Optional[float] = None
     risk_level: Optional[str] = None
@@ -88,3 +94,190 @@ class QAAQualitativeReport(BaseModel):
 
     final_recommendation: Literal['Approve', 'Approve with Conditions', 'Manual Review', 'Decline']
     recommendation_justification: str = Field(..., description="Final paragraph justification")
+
+
+class Scores(BaseModel):
+    credit_score: Optional[int] = Field(None, ge=300, le=850, description="Credit score between 300 and 850")
+    default_probability: Optional[float] = None
+    overall_risk_score: Optional[float] = None
+    ensemble_confidence: Optional[float] = None
+    approval_probability: Optional[float] = None
+
+
+class ShapGlobalImportanceEntry(BaseModel):
+    feature: str
+    importance: float
+
+
+class FeatureImpactEntry(BaseModel):
+    feature: str
+    importance: float
+    impact: Literal["positive", "neutral", "negative"]
+
+
+class ShapAnalysisExtended(BaseModel):
+    global_importance: List[ShapGlobalImportanceEntry] = []
+    local_explanation: Optional[str] = None
+    description: Optional[str] = None
+    confidence_factors: List[str] = []
+    risk_factors: List[str] = []
+
+
+class ExplainabilityExtended(BaseModel):
+    shap_analysis: Optional[ShapAnalysisExtended] = None
+    feature_importance: List[FeatureImpactEntry] = []
+    explanation_available: Optional[bool] = None
+    interpretation: Optional[str] = None
+
+
+class RiskDimensions(BaseModel):
+    credit_risk: Optional[float] = None
+    liquidity_risk: Optional[float] = None
+    capacity_risk: Optional[float] = None
+    character_risk: Optional[float] = None
+    financial_risk: Optional[float] = None
+    behavioral_risk: Optional[float] = None
+    market_risk: Optional[float] = None
+    operational_risk: Optional[float] = None
+
+
+class RiskScenarioExtended(BaseModel):
+    scenario: str
+    probability: Optional[float] = None
+    description: Optional[str] = None
+    expected_default_rate: Optional[float] = None
+    impact: Literal["low", "medium", "high"]
+
+
+class RiskMitigationItem(BaseModel):
+    category: str
+    recommendation: str
+    priority: Literal["low", "medium", "high"]
+
+
+class RiskAnalysisExtended(BaseModel):
+    overall_risk_score: Optional[float] = None
+    risk_dimensions: Optional[RiskDimensions] = None
+    risk_scenarios: List[RiskScenarioExtended] = []
+    risk_mitigation: List[RiskMitigationItem] = []
+    risk_factors: List[str] = []
+    protective_factors: List[str] = []
+
+
+class EnsembleDetails(BaseModel):
+    features_analyzed: Optional[int] = None
+    feature_categories: Optional[Dict[str, int]] = None
+    ensemble_confidence: Optional[float] = None
+    individual_predictions: Optional[Dict[str, float]] = None
+    weights: Optional[Dict[str, float]] = None
+    consensus_score: Optional[float] = None
+    diversity_index: Optional[float] = None
+    stability_metric: Optional[float] = None
+    provenance_run_ids: Optional[Dict[str, str]] = None
+
+
+class NBEComplianceStatusExtended(BaseModel):
+    overall_compliant: Optional[bool] = None
+    compliance_score: Optional[int] = None
+    salary_rule_compliant: Optional[bool] = None
+    amount_rule_compliant: Optional[bool] = None
+    interest_rate_compliant: Optional[bool] = None
+    recommended_interest_rate: Optional[float] = None
+    max_affordable_payment_etb: Optional[float] = None
+    proposed_payment_etb: Optional[float] = None
+    compliance_details: Optional[Dict[str, str]] = None
+    recommendations: List[str] = []
+    regulatory_notes: List[str] = []
+
+
+class ProcessingMetadata(BaseModel):
+    timestamp: Optional[str] = None
+    processing_time_ms: Optional[int] = None
+    data_quality_score: Optional[float] = None
+    feature_completeness: Optional[float] = None
+
+
+class LendingRecommendations(BaseModel):
+    recommended_loan_amount: Optional[float] = None
+    suggested_interest_rate: Optional[float] = None
+    repayment_period_months: Optional[int] = None
+    collateral_requirement: Optional[str] = None
+    approval_probability: Optional[float] = None
+
+
+class ModelPerformance(BaseModel):
+    accuracy: Optional[float] = None
+    precision: Optional[float] = None
+    recall: Optional[float] = None
+    f1_score: Optional[float] = None
+    auc_roc: Optional[float] = None
+    calibration_score: Optional[float] = None
+    feature_stability: Optional[float] = None
+    prediction_consistency: Optional[float] = None
+
+
+class AdditionalInsightsExtended(BaseModel):
+    market_context: Optional[Dict[str, Any]] = None
+    lending_recommendations: Optional[LendingRecommendations] = None
+    model_performance: Optional[ModelPerformance] = None
+
+
+class LinkItem(BaseModel):
+    rel: str
+    href: str
+    title: Optional[str] = None
+
+
+class QAAExtendedResponse(BaseModel):
+    """Extended response combining core QAA qualitative report with structured fields
+    similar to sample_response.json for richer downstream consumption.
+
+    Most nested sections are modeled as generic objects to allow flexibility while
+    preserving the overall shape used in the sample response.
+    """
+
+    # Core identifiers and summary from QSE
+    request_id: str
+    customer_id: str
+    correlation_id: Optional[str] = None
+
+    credit_score: Optional[float] = None
+    risk_level: Optional[str] = None
+    risk_category: Optional[str] = None
+    default_probability: Optional[float] = None
+    confidence_score: Optional[float] = None
+    model_type_used: Optional[str] = None
+    model_version: Optional[str] = None
+    features_count: Optional[int] = None
+    ethiopian_market_optimized: Optional[bool] = None
+
+    # Rich sections (kept flexible)
+    feature_analysis: Optional[Dict[str, Any]] = None
+    explainability: Optional[ExplainabilityExtended] = None
+    risk_analysis: Optional[RiskAnalysisExtended] = None
+    ensemble_details: Optional[EnsembleDetails] = None
+    nbe_compliance_status: Optional[NBEComplianceStatusExtended] = None
+    nbe_compliance: Optional[Dict[str, Any]] = None
+    processing_metadata: Optional[ProcessingMetadata] = None
+    processing_time_ms: Optional[int] = None
+    timestamp: Optional[str] = None
+    additional_insights: Optional[AdditionalInsightsExtended] = None
+
+    # Include the original qualitative report so existing consumers have access
+    qaa_report: QAAQualitativeReport
+
+    # Consolidated scores
+    scores: Optional[Scores] = None
+
+    # UI deep-links
+    links: Optional[List[LinkItem]] = None
+
+    class Config:
+        extra = "ignore"
+
+
+class QAAExtendedResponseV1_1(QAAExtendedResponse):
+    """Version 1.1: adds required links field for UI deep-links and
+    future backward-compatible additions."""
+
+    links: List[LinkItem]
