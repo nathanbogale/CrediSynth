@@ -49,9 +49,15 @@ macOS/Linux (bash)
 - Docker status/logs: `bash ./scripts/manage.sh --mode docker --action status` or `--action logs`
 - Test API (either mode): `bash ./scripts/manage.sh --action test`
 
+Port selection
+- The manage script auto-selects a free port in `7000–7099` if `7000` is occupied.
+- The chosen port is recorded at `logs/.local_api.port` for convenience.
+- Docker runs map the selected host port to container `7000`.
+
 Example
 ```
-curl -X POST http://localhost:7000/v1/analyze \
+PORT=$(cat logs/.local_api.port)
+curl -X POST http://localhost:${PORT}/v1/analyze \
   -H "Content-Type: application/json" \
   --data-binary @t:/CrediSynth/sample_request.json
 ```

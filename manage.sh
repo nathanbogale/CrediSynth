@@ -9,11 +9,11 @@ SCRIPT_PATH="$ROOT_DIR/scripts/manage.sh"
 
 usage() {
   cat <<EOF
-Usage: ./manage.sh [start|stop|restart|status|logs|test] [--port PORT]
+Usage: ./manage.sh [start|stop|restart|status|logs|test]
 
 Examples:
   ./manage.sh start
-  ./manage.sh restart --port 4010
+  ./manage.sh restart
   ./manage.sh status
 
 Advanced:
@@ -21,6 +21,8 @@ Advanced:
   ./manage.sh --mode docker build
 
 This is a thin wrapper over scripts/manage.sh.
+By default, the service auto-selects a free port in the 7000–7099 range.
+You can still override with --port if needed.
 EOF
 }
 

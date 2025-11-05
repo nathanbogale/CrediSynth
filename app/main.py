@@ -23,8 +23,7 @@ from .models import (
     AdditionalInsightsExtended,
 )
 from .config import settings
-from .gemini_client import run_gemini, DownstreamError
-from .explainability_client import fetch_explainability
+from .gemini_client import run_gemini, run_gemini_explainability, DownstreamError
 from .db import init_db, audit_created, audit_completed, audit_failed, has_db, get_analysis
 
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -284,91 +283,18 @@ async def analyze(
 
     risk_category = _derive_risk_category(effective_risk_level, default_prob)
 
-    # Assemble structured explainability
+    # Assemble structured explainability using Gemini only
     expl: ExplainabilityExtended | None = None
-    if qse.explainability:
-        expl = ExplainabilityExtended(
-            shap_analysis=ShapAnalysisExtended(
-                local_explanation=None,
-                description=None,
-                confidence_factors=qse.explainability.confidence_factors or [],
-                risk_factors=qse.explainability.risk_factors or [],
-            ),
-            feature_importance=[],
-            explanation_available=None,
-            interpretation=None,
-        )
-    # Consolidate feature importance/global ordering if provided in feature_analysis
-    if (qse.feature_analysis or {}).get("global_importance"):
+    try:
+        expl = await run_gemini_explainability(qse, analysis_id)
+    except DownstreamError as e:
+        # If explainability fails, surface as downstream error to respect Gemini-only requirement
         try:
-            gi = qse.feature_analysis.get("global_importance")
-            if isinstance(gi, list):
-                expl = expl or ExplainabilityExtended()
-                expl.shap_analysis = expl.shap_analysis or ShapAnalysisExtended()
-                expl.shap_analysis.global_importance = [
-                    {"feature": str(item.get("feature")), "importance": float(item.get("importance", 0.0))}
-                    for item in gi if isinstance(item, dict)
-                ]
-                # top-N drivers by signed impact if available
-                topn = sorted(expl.shap_analysis.global_importance, key=lambda x: x["importance"], reverse=True)[:5]
-                expl.feature_importance = [
-                    {"feature": t["feature"], "importance": t["importance"], "impact": "positive" if t["importance"] >= 0 else "negative"}
-                    for t in topn
-                ]
+            await audit_failed(analysis_id, str(e))
         except Exception:
             pass
-    # Try external explainability service before falling back to heuristics
-    if not expl:
-        try:
-            fetched = await fetch_explainability(qse)
-            if fetched:
-                expl = fetched
-        except Exception:
-            pass
-    # Heuristic explainability builder when upstream explainability is absent
-    if not expl:
-        try:
-            expl = ExplainabilityExtended(
-                shap_analysis=ShapAnalysisExtended(),
-                feature_importance=[],
-                explanation_available=True,
-                interpretation="Heuristic drivers computed from affordability, credit performance, and behavioral signals.",
-            )
-            # Build simple importance scores
-            importance_entries = []
-            dti = (qse.affordability_and_obligations or {}).get("debt_to_income_ratio")
-            res_ratio = (qse.affordability_and_obligations or {}).get("residual_income_ratio")
-            cash_days = (qse.affordability_and_obligations or {}).get("cash_buffer_days")
-            del30 = (qse.core_credit_performance or {}).get("delinquency_30d_count_12m")
-            beh_consistency = (qse.behavioral_intelligence or {}).get("behavioral_consistency_score")
-            conscientious = (qse.behavioral_intelligence or {}).get("conscientiousness_score")
-            savings = (qse.digital_behavioral_intelligence or {}).get("savings_behavior_score")
-
-            if isinstance(dti, (int, float)):
-                importance_entries.append({"feature": "debt_to_income_ratio", "importance": float(dti), "impact": "negative"})
-            if isinstance(res_ratio, (int, float)):
-                importance_entries.append({"feature": "residual_income_ratio", "importance": float(res_ratio), "impact": "positive" if res_ratio < 0.5 else "negative"})
-            if isinstance(cash_days, (int, float)):
-                # More cash buffer days is positive
-                importance_entries.append({"feature": "cash_buffer_days", "importance": float(cash_days) / 90.0, "impact": "positive"})
-            if isinstance(del30, (int, float)):
-                importance_entries.append({"feature": "delinquency_30d_count_12m", "importance": float(del30) / 10.0, "impact": "negative"})
-            if isinstance(beh_consistency, (int, float)):
-                importance_entries.append({"feature": "behavioral_consistency_score", "importance": float(beh_consistency) / 100.0, "impact": "positive"})
-            if isinstance(conscientious, (int, float)):
-                importance_entries.append({"feature": "conscientiousness_score", "importance": float(conscientious) / 100.0, "impact": "positive"})
-            if isinstance(savings, (int, float)):
-                importance_entries.append({"feature": "savings_behavior_score", "importance": float(savings) / 100.0, "impact": "positive"})
-
-            # Sort and take top-N
-            importance_entries = sorted(importance_entries, key=lambda x: x["importance"], reverse=True)[:5]
-            expl.feature_importance = importance_entries
-            # Also populate a global importance list
-            expl.shap_analysis.global_importance = [
-                {"feature": e["feature"], "importance": e["importance"]} for e in importance_entries
-            ]
-        except Exception:
-            pass
+        REQ_COUNTER.labels(status="downstream_error").inc()
+        raise HTTPException(status_code=503, detail=str(e))
 
     # Assemble structured risk analysis
     risk_ext: RiskAnalysisExtended | None = None
@@ -636,18 +562,6 @@ async def analyze(
     # Compute consensus score from individual predictions and weights if not provided
     try:
         ed = extended["ensemble_details"]
-        # Optional multi-model ensemble mode
-        if settings.ENSEMBLE_MODE.lower() == "multi" and settings.ENSEMBLE_EXTRA_MODELS:
-            preds = ed.get("individual_predictions") or {}
-            gem = preds.get("gemini", 0.0)
-            extra_weight = round(1.0 / (len(settings.ENSEMBLE_EXTRA_MODELS) + 1), 4)
-            ed.setdefault("weights", {})["gemini"] = extra_weight
-            ed.setdefault("provenance_run_ids", {})
-            for mdl in settings.ENSEMBLE_EXTRA_MODELS:
-                preds[mdl] = gem
-                ed["weights"][mdl] = extra_weight
-                ed["provenance_run_ids"][mdl] = f"configured:{mdl}"
-            ed["individual_predictions"] = preds
         preds = ed.get("individual_predictions") or {}
         wts = ed.get("weights") or {}
         total_w = sum(wts.values()) or 1.0

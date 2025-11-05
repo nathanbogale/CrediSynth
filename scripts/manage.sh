@@ -13,6 +13,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOGS_DIR="$ROOT_DIR/logs"
 PID_FILE="$LOGS_DIR/.local_api.pid"
 LOG_FILE="$LOGS_DIR/local_server.log"
+PORT_FILE="$LOGS_DIR/.local_api.port"
 
 mkdir -p "$LOGS_DIR"
 
@@ -29,6 +30,7 @@ Examples:
 EOF
 }
 
+USER_PORT_SET=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --mode) MODE="$2"; shift 2 ;;
@@ -36,11 +38,35 @@ while [[ $# -gt 0 ]]; do
     --env-file) ENV_FILE="$2"; shift 2 ;;
     --tag) TAG="$2"; shift 2 ;;
     --container) CONTAINER="$2"; shift 2 ;;
-    --port) PORT="$2"; shift 2 ;;
+    --port) PORT="$2"; USER_PORT_SET=true; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown arg: $1"; usage; exit 1 ;;
   esac
 done
+
+# Auto-select a free port in 7000–7099 by default if not specified
+PORT_RANGE_START=7000
+PORT_RANGE_END=7099
+is_port_in_use() {
+  local p="$1"
+  ss -ltn | awk '{print $4}' | grep -E "(^|:)${p}$" >/dev/null 2>&1
+}
+find_free_port() {
+  local start="$PORT_RANGE_START"
+  local end="$PORT_RANGE_END"
+  for ((p=start; p<=end; p++)); do
+    if ! is_port_in_use "$p"; then
+      echo "$p"; return 0
+    fi
+  done
+  return 1
+}
+if [[ "$USER_PORT_SET" != "true" ]]; then
+  if is_port_in_use "$PORT"; then
+    fp="$(find_free_port)" || true
+    if [[ -n "${fp:-}" ]]; then PORT="$fp"; fi
+  fi
+fi
 
 ensure_venv() {
   if [[ -x "$ROOT_DIR/.venv/bin/uvicorn" ]]; then
@@ -68,7 +94,8 @@ start_local() {
   # shellcheck disable=SC1091
   nohup bash -c "source \"$ROOT_DIR/.venv/bin/activate\" && uvicorn app.main:app --host 0.0.0.0 --port $PORT --reload" >"$LOG_FILE" 2>&1 &
   echo $! > "$PID_FILE"
-  echo "Started. PID: $(cat "$PID_FILE") Logs: $LOG_FILE"
+  echo "$PORT" > "$PORT_FILE"
+  echo "Started. PID: $(cat "$PID_FILE") Port: $PORT Logs: $LOG_FILE"
 }
 
 stop_local() {
@@ -89,7 +116,12 @@ stop_local() {
 
 status_local() {
   if [[ -f "$PID_FILE" ]] && kill -0 "$(head -n1 "$PID_FILE")" 2>/dev/null; then
-    echo "Local API: running (PID $(head -n1 "$PID_FILE"))"
+    if [[ -f "$PORT_FILE" ]]; then
+      CURRENT_PORT="$(head -n1 "$PORT_FILE")"
+    else
+      CURRENT_PORT="$PORT"
+    fi
+    echo "Local API: running (PID $(head -n1 "$PID_FILE")) on port $CURRENT_PORT"
   else
     echo "Local API: not running"
   fi
@@ -118,8 +150,8 @@ start_docker() {
     echo "Docker CLI not found" >&2
     exit 1
   fi
-  echo "Starting Docker container $CONTAINER on port $PORT"
-  docker run -d --name "$CONTAINER" -p "$PORT:$PORT" --env-file "$ROOT_DIR/$ENV_FILE" "$TAG"
+  echo "Starting Docker container $CONTAINER on host port $PORT -> container 7000"
+  docker run -d --name "$CONTAINER" -p "$PORT:7000" --env-file "$ROOT_DIR/$ENV_FILE" "$TAG"
 }
 
 stop_docker() {
@@ -149,7 +181,12 @@ logs_docker() {
 }
 
 test_api() {
-  BASE_URL="http://127.0.0.1:$PORT"
+  if [[ -f "$PORT_FILE" ]]; then
+    TEST_PORT="$(head -n1 "$PORT_FILE")"
+  else
+    TEST_PORT="$PORT"
+  fi
+  BASE_URL="http://127.0.0.1:$TEST_PORT"
   echo "Health: $BASE_URL/health"
   curl -sS "$BASE_URL/health" || true
   echo

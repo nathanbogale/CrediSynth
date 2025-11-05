@@ -69,10 +69,13 @@ bash ./scripts/manage.sh --action test
 docker build -t credisynth-qaa:local .
 
 # Run
-docker run --rm -p 7000:7000 --env-file .env.example credisynth-qaa:local
+# Map an auto-selected host port to container 7000
+HOST_PORT=${HOST_PORT:-7000}
+docker run --rm -p ${HOST_PORT}:7000 --env-file .env.example credisynth-qaa:local
 
 # Test
-curl -sS -X POST http://127.0.0.1:7000/v1/analyze \
+PORT=${PORT:-$(cat logs/.local_api.port 2>/dev/null || echo 7000)}
+curl -sS -X POST http://127.0.0.1:${PORT}/v1/analyze \
   -H "Content-Type: application/json" \
   --data @sample_request.json | jq
 ```
@@ -80,7 +83,8 @@ curl -sS -X POST http://127.0.0.1:7000/v1/analyze \
 ### API Testing
 ```bash
 # Health check
-curl http://localhost:7000/health
+PORT=${PORT:-$(cat logs/.local_api.port 2>/dev/null || echo 7000)}
+curl http://localhost:${PORT}/health
 
 # Analyze request (Windows)
 curl -X POST http://localhost:4000/v1/analyze ^
@@ -88,13 +92,13 @@ curl -X POST http://localhost:4000/v1/analyze ^
   --data-binary @sample_request.json
 
 # Analyze request (Unix)
-curl -X POST http://localhost:7000/v1/analyze \
+curl -X POST http://localhost:${PORT}/v1/analyze \
   -H "Content-Type: application/json" \
   -H "X-Correlation-ID: test-correlation-123" \
   --data-binary @sample_request.json
 
 # Metrics
-curl http://localhost:7000/metrics
+curl http://localhost:${PORT}/metrics
 ```
 
 ## Architecture

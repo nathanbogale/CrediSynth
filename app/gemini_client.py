@@ -5,7 +5,7 @@ from typing import Any, List
 
 import google.generativeai as genai
 
-from .models import QSEReportInput, QAAQualitativeReport
+from .models import QSEReportInput, QAAQualitativeReport, ExplainabilityExtended
 
 
 class DownstreamError(Exception):
@@ -53,6 +53,20 @@ def build_prompt(qse: QSEReportInput, analysis_id: str) -> str:
         f"risk_level: {qse.risk_level}\n"
         f"default_probability: {qse.default_probability}\n"
         f"model_version: {qse.model_version}\n"
+    )
+
+
+def build_explainability_prompt(qse: QSEReportInput, analysis_id: str) -> str:
+    # Instruct Gemini to produce ExplainabilityExtended JSON strictly
+    return (
+        "You are CrediSynth, an explainability specialist. Respond ONLY with a single JSON object that strictly matches the ExplainabilityExtended schema. "
+        "Do not include any prose outside JSON. Use these fields exactly: shap_analysis (with global_importance[], local_explanation, description, confidence_factors[], risk_factors[]), "
+        "feature_importance[] (items: feature, importance, impact one of 'positive','neutral','negative'), explanation_available, interpretation.\n"
+        "Return valid JSON only. No markdown, no comments, no extra keys.\n\n"
+        f"analysis_id: {analysis_id}\n"
+        f"qse_request_id: {qse.request_id}\n"
+        f"customer_id: {qse.customer_id}\n"
+        "Use the quantitative inputs to infer top-5 global importance drivers and concise local explanation."
     )
 
 
@@ -207,3 +221,110 @@ async def run_gemini(qse: QSEReportInput, analysis_id: str) -> QAAQualitativeRep
         last_err = e
 
     raise DownstreamError(str(last_err) if last_err else "Gemini call failed")
+
+
+async def run_gemini_explainability(qse: QSEReportInput, analysis_id: str) -> ExplainabilityExtended:
+    try:
+        api_key = os.getenv("GEMINI_API_KEY")
+        configured_model = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
+        available = discover_supported_models(api_key)
+        avail_set = set(available)
+
+        configured_full = configured_model if configured_model.startswith("models/") else f"models/{configured_model}"
+        candidates: List[str] = []
+        if configured_full in avail_set:
+            candidates.append(configured_full)
+        pro_tokens = [
+            "gemini-2.5-pro",
+            "gemini-pro-latest",
+            "gemini-2.0-pro",
+            "gemini-pro",
+        ]
+        flash_tokens = [
+            "gemini-2.5-flash",
+            "gemini-flash-latest",
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-001",
+            "gemini-2.0-flash-lite",
+            "gemini-flash",
+        ]
+
+        def find_first_available(tokens: List[str]) -> str | None:
+            for tok in tokens:
+                for n in available:
+                    if tok in n:
+                        return n
+            return None
+
+        for c in [find_first_available(pro_tokens), find_first_available(flash_tokens)]:
+            if c and c not in candidates:
+                candidates.append(c)
+        if not candidates:
+            raise DownstreamError(
+                f"No supported Gemini models available to this API key. Available: {available}"
+            )
+        prompt = build_explainability_prompt(qse, analysis_id)
+
+        max_retries = 3
+        timeout_seconds = float(os.getenv("REQUEST_TIMEOUT_SECONDS", "12.0"))
+        last_err: Exception | None = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                for model_name in candidates:
+                    try:
+                        model = configure(api_key, model_name)
+                        if hasattr(model, "generate_content_async"):
+                            resp = await asyncio.wait_for(
+                                model.generate_content_async(
+                                    prompt,
+                                    generation_config={
+                                        "temperature": 0.2,
+                                        "max_output_tokens": 1024,
+                                        "response_mime_type": "application/json",
+                                    },
+                                ),
+                                timeout=timeout_seconds,
+                            )
+                        else:
+                            def _call_sync():
+                                return model.generate_content(
+                                    prompt,
+                                    generation_config={
+                                        "temperature": 0.2,
+                                        "max_output_tokens": 1024,
+                                        "response_mime_type": "application/json",
+                                    },
+                                )
+
+                            resp = await asyncio.wait_for(asyncio.to_thread(_call_sync), timeout=timeout_seconds)
+
+                        data = resp.text
+                        try:
+                            obj = json.loads(data)
+                        except Exception as je:
+                            raise DownstreamError(f"Invalid JSON from Gemini: {je}; raw={data[:300]}")
+                        try:
+                            return ExplainabilityExtended.model_validate(obj)
+                        except Exception as ve:
+                            raise DownstreamError(f"Invalid JSON from Gemini: {ve}; raw={data[:300]}")
+                    except Exception as me:
+                        msg = str(me)
+                        if (
+                            "not found" in msg
+                            or "not supported" in msg
+                            or "404 models/" in msg
+                            or "Model does not support generateContent" in msg
+                        ):
+                            last_err = me
+                            continue
+                        raise me
+            except Exception as e:
+                last_err = e
+                if attempt < max_retries:
+                    await asyncio.sleep(2 ** attempt)
+                else:
+                    break
+    except Exception as e:
+        last_err = e
+
+    raise DownstreamError(str(last_err) if last_err else "Gemini explainability call failed")
