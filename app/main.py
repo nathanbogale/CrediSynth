@@ -2,6 +2,7 @@ import uuid
 import os
 import logging
 import json
+import sys
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Header, Request, Body
 from pydantic import ValidationError
@@ -22,6 +23,12 @@ from .models import (
     ProcessingMetadata,
     AdditionalInsightsExtended,
 )
+from .models_extended import (
+    GatewayAssessmentInput,
+    EnhancedAnalysisResponse,
+    AnalysisResult,
+)
+from .gateway_analyzer import analyze_gateway_assessment
 from .config import settings
 from .gemini_client import run_gemini, run_gemini_explainability, DownstreamError
 from .db import init_db, audit_created, audit_completed, audit_failed, has_db, get_analysis
@@ -30,6 +37,14 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Counter, Histogram
 
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 logger = logging.getLogger(__name__)
 
 
@@ -153,35 +168,64 @@ except Exception:
 
 @app.post(
     "/v1/analyze",
-    response_model=QAAExtendedResponse,
     responses={
         200: {
-            "description": "Extended qualitative synthesis from QSE report",
-            "content": {"application/json": {"example": SAMPLE_RESP or {}}},
+            "description": "Analysis result - format depends on input type (QSE or Gateway)",
         },
         422: {"description": "Validation error"},
         503: {"description": "Downstream AI unavailable or invalid response"},
         500: {"description": "Internal server error"},
     },
     tags=["Analysis"],
+    summary="Analyze QSE Report or Gateway Assessment",
+    description="Accepts either QSE report format or Gateway assessment format. Automatically detects format and returns appropriate response."
 )
 async def analyze(
     request: Request,
-    qse: QSEReportInput = Body(
-        ..., examples={
-            "complete_sample": {
-                "summary": "Complete sample aligned to QSE output",
-                "value": SAMPLE_REQ or {
-                    "request_id": "sample",
-                    "customer_id": "cust",
-                },
-            }
-        }
-    ),
+    body: dict = Body(...),
     x_correlation_id: str | None = Header(None),
 ):
+    """
+    Unified analyze endpoint that accepts both QSE and Gateway formats.
+    Automatically detects input format and routes to appropriate handler.
+    """
+    import time
+    start_ms = int(time.time() * 1000)
+    
+    # Detect input format: Gateway format has 'success' field or specific gateway structure
+    is_gateway_format = (
+        body.get("success") is not None or 
+        (
+            "fraud_detection_result" in body and 
+            "product_recommendations" in body and
+            "nbe_compliance_status" in body and
+            isinstance(body.get("nbe_compliance_status"), dict) and
+            "overall_compliance" in body.get("nbe_compliance_status", {})
+        )
+    )
+    
+    if is_gateway_format:
+        # Route to gateway handler
+        try:
+            gateway_input = GatewayAssessmentInput(**body)
+            return await analyze_gateway(request, gateway_input, x_correlation_id)
+        except ValidationError as e:
+            REQ_COUNTER.labels(status="validation_error").inc()
+            raise HTTPException(status_code=422, detail=str(e))
+        except Exception as e:
+            logger.error(f"Gateway analyze error: {e}", exc_info=True)
+            REQ_COUNTER.labels(status="internal_error").inc()
+            raise HTTPException(status_code=500, detail="Internal server error")
+    
+    # Route to QSE handler
+    try:
+        qse = QSEReportInput(**body)
+    except ValidationError as e:
+        REQ_COUNTER.labels(status="validation_error").inc()
+        raise HTTPException(status_code=422, detail=str(e))
+    
     analysis_id = str(uuid.uuid4())
-    correlation_id = x_correlation_id or request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
+    correlation_id = x_correlation_id or request.headers.get("X-Correlation-ID") or qse.correlation_id or str(uuid.uuid4())
 
     # Audit created
     try:
@@ -189,8 +233,6 @@ async def analyze(
     except Exception as e:
         logger.warning(f"Audit create failed: {e}")
 
-    import time
-    start_ms = int(time.time() * 1000)
     logger.info(json.dumps({"event": "analyze_start", "analysis_id": analysis_id, "correlation_id": correlation_id}))
     try:
         # Honor MOCK_MODE strictly: only use fallback when explicitly enabled
@@ -283,18 +325,33 @@ async def analyze(
 
     risk_category = _derive_risk_category(effective_risk_level, default_prob)
 
-    # Assemble structured explainability using Gemini only
+    # Assemble structured explainability using Gemini only (skip in mock mode)
     expl: ExplainabilityExtended | None = None
-    try:
-        expl = await run_gemini_explainability(qse, analysis_id)
-    except DownstreamError as e:
-        # If explainability fails, surface as downstream error to respect Gemini-only requirement
+    if not settings.MOCK_MODE:
         try:
-            await audit_failed(analysis_id, str(e))
-        except Exception:
-            pass
-        REQ_COUNTER.labels(status="downstream_error").inc()
-        raise HTTPException(status_code=503, detail=str(e))
+            expl = await run_gemini_explainability(qse, analysis_id)
+        except DownstreamError as e:
+            # If explainability fails, surface as downstream error to respect Gemini-only requirement
+            try:
+                await audit_failed(analysis_id, str(e))
+            except Exception:
+                pass
+            REQ_COUNTER.labels(status="downstream_error").inc()
+            raise HTTPException(status_code=503, detail=str(e))
+    else:
+        # Mock explainability response
+        expl = ExplainabilityExtended(
+            shap_analysis=ShapAnalysisExtended(
+                global_importance=[],
+                local_explanation="Mock mode: Explainability analysis not available",
+                description="Mock mode active",
+                confidence_factors=[],
+                risk_factors=[],
+            ),
+            feature_importance=[],
+            explanation_available=False,
+            interpretation="Mock mode: Using heuristic fallback for explainability",
+        )
 
     # Assemble structured risk analysis
     risk_ext: RiskAnalysisExtended | None = None
@@ -615,23 +672,122 @@ async def get_analysis_by_id(analysis_id: str):
 @app.post("/v1/analyze/async", tags=["Analysis"], summary="Submit analysis job asynchronously")
 async def analyze_async(
     request: Request,
-    qse: QSEReportInput,
+    qse: QSEReportInput = Body(...),
     x_correlation_id: str | None = Header(None),
 ):
     job_id = str(uuid.uuid4())
-    correlation_id = x_correlation_id or request.headers.get("X-Correlation-ID")
+    correlation_id = x_correlation_id or request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
     try:
-        await audit_created(job_id, correlation_id or job_id, {"async": True})
+        await audit_created(job_id, correlation_id, qse.model_dump())
     except Exception:
         pass
     # In a real system, enqueue the job. Here, return the tracking payload.
-    return {"job_id": job_id, "status": "queued"}
+    from fastapi import Response
+    return Response(
+        content=json.dumps({"job_id": job_id, "status": "queued", "correlation_id": correlation_id}),
+        media_type="application/json",
+        status_code=202
+    )
 
 
 @app.get("/v1/jobs/{job_id}", tags=["Analysis"], summary="Poll an async job status")
 async def get_job_status(job_id: str):
     # Placeholder: normally check a job store
     return {"job_id": job_id, "status": "pending"}
+
+
+@app.post(
+    "/v1/analyze/gateway",
+    response_model=EnhancedAnalysisResponse,
+    responses={
+        200: {
+            "description": "Enhanced analysis with scores, analysis results, decisions, and recommendations",
+        },
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
+    tags=["Analysis"],
+    summary="Analyze Gateway Assessment",
+    description="Accepts API Gateway assessment results and returns comprehensive analysis with scores, detailed analysis, decisions, and actionable recommendations"
+)
+async def analyze_gateway(
+    request: Request,
+    gateway_input: GatewayAssessmentInput = Body(...),
+    x_correlation_id: str | None = Header(None),
+):
+    """
+    Enhanced analyze endpoint for Gateway Assessment format.
+    Returns structured response with:
+    - Scores: Credit, fraud, risk, ATP/WTP scores
+    - Analysis: Detailed breakdown of risk, fraud, compliance, products
+    - Decisions: Final decision, approval status, fraud/risk/compliance decisions
+    - Recommendations: Actionable recommendations based on assessment
+    """
+    analysis_id = str(uuid.uuid4())
+    correlation_id = x_correlation_id or request.headers.get("X-Correlation-ID") or gateway_input.correlation_id or str(uuid.uuid4())
+    
+    import time
+    start_ms = int(time.time() * 1000)
+    
+    logger.info(json.dumps({
+        "event": "gateway_analyze_start",
+        "analysis_id": analysis_id,
+        "correlation_id": correlation_id,
+        "customer_id": gateway_input.customer_id,
+        "request_id": gateway_input.request_id,
+    }))
+    
+    try:
+        # Audit created
+        try:
+            await audit_created(analysis_id, correlation_id, gateway_input.model_dump())
+        except Exception as e:
+            logger.warning(f"Audit create failed: {e}")
+        
+        # Analyze gateway assessment
+        result = analyze_gateway_assessment(gateway_input, analysis_id)
+        
+        # Compute processing time
+        end_ms = int(time.time() * 1000)
+        result.processing_time_ms = end_ms - start_ms
+        
+        # Audit completed
+        try:
+            await audit_completed(analysis_id, result.model_dump())
+        except Exception as e:
+            logger.warning(f"Audit complete failed: {e}")
+        
+        # Metrics
+        try:
+            PROC_TIME_SEC.observe(result.processing_time_ms / 1000.0 if result.processing_time_ms else 0.0)
+            REQ_COUNTER.labels(status="success").inc()
+        except Exception:
+            pass
+        
+        logger.info(json.dumps({
+            "event": "gateway_analyze_complete",
+            "analysis_id": analysis_id,
+            "correlation_id": correlation_id,
+            "processing_time_ms": result.processing_time_ms,
+        }))
+        
+        return result
+        
+    except ValidationError as e:
+        try:
+            await audit_failed(analysis_id, str(e))
+        except Exception:
+            pass
+        REQ_COUNTER.labels(status="validation_error").inc()
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        try:
+            await audit_failed(analysis_id, str(e))
+        except Exception:
+            pass
+        REQ_COUNTER.labels(status="internal_error").inc()
+        logger.error(f"Gateway analyze error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/v1/models", tags=["Explainability"], summary="List active model version and health")
@@ -648,7 +804,7 @@ async def list_models():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("app.main:app", host="0.0.0.0", port=7000, reload=True)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=5000, reload=True)
 
 
 @app.on_event("startup")

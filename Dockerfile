@@ -21,6 +21,6 @@ COPY examples ./examples
 ENV MOCK_MODE=false \
     GEMINI_MODEL=gemini-1.5-pro
 
-EXPOSE 7000
+EXPOSE 5000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]

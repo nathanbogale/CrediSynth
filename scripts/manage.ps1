@@ -8,7 +8,7 @@ Param(
     [string]$EnvFile = '.env',
     [string]$Tag = 'credisynth-qaa:local',
     [string]$Container = 'credisynth-qaa',
-    [int]$Port = 7000
+    [int]$Port = 5000
 )
 
 $Root = (Resolve-Path "$PSScriptRoot/..").Path

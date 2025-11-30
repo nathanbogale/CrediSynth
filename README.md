@@ -11,7 +11,7 @@ python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
 set MOCK_MODE=true
-uvicorn app.main:app --host 0.0.0.0 --port 7000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload
 ```
 
 API
@@ -24,8 +24,8 @@ Notes
 
 Docker
 - Build: `docker build -t credisynth-qaa:local .`
-- Run: `docker run --rm -p 7000:7000 --env-file .env.example credisynth-qaa:local`
-- cURL: `curl -sS -X POST http://127.0.0.1:7000/v1/analyze -H "Content-Type: application/json" --data @sample_request.json | jq`
+- Run: `docker run --rm -p 5000:5000 --env-file .env.example credisynth-qaa:local`
+- cURL: `curl -sS -X POST http://127.0.0.1:5000/v1/analyze -H "Content-Type: application/json" --data @sample_request.json | jq`
 
 Observability & Auditing
 - Metrics: Prometheus at `GET /metrics` (enabled automatically).
@@ -50,9 +50,9 @@ macOS/Linux (bash)
 - Test API (either mode): `bash ./scripts/manage.sh --action test`
 
 Port selection
-- The manage script auto-selects a free port in `7000–7099` if `7000` is occupied.
+- The manage script auto-selects a free port in `5000–5099` if `5000` is occupied.
 - The chosen port is recorded at `logs/.local_api.port` for convenience.
-- Docker runs map the selected host port to container `7000`.
+- Docker runs map the selected host port to container `5000`.
 
 Example
 ```

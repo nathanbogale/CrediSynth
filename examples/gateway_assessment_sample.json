@@ -1,0 +1,221 @@
+{
+  "success": true,
+  "customer_id": "CUST_0001",
+  "request_id": "req_custjourney_init_48F8E7B0A5B4",
+  "correlation_id": "corr_1B3D99DA",
+  "assessment_timestamp": "2025-11-30T18:01:03.579365",
+  "credit_score": 600,
+  "credit_score_components": {
+    "traditional_score": 570,
+    "alternative_score": 630,
+    "realtime_score": null,
+    "ensemble_score": 600
+  },
+  "risk_level": "Medium",
+  "risk_category": "poor",
+  "model_version": "ensemble_v2.0",
+  "model_type_used": "Ensemble Multi-Model",
+  "fraud_score": 0,
+  "fraud_detection_result": {
+    "fraud_score": 0,
+    "fraud_risk_level": "minimal",
+    "fraud_signals": [],
+    "fraud_signals_count": 0,
+    "recommendation": "APPROVE - No significant fraud indicators",
+    "block_transaction": false,
+    "require_manual_review": false
+  },
+  "fraud_risk_level": "minimal",
+  "fraud_signals": [],
+  "fraud_block_transaction": false,
+  "default_probability": 0.2,
+  "default_prediction": {
+    "default_probability": 0.2,
+    "risk_level": "medium",
+    "survival_probabilities": [],
+    "hazard_ratios": [],
+    "time_to_default_months": null,
+    "confidence_score": 0
+  },
+  "survival_probabilities": [],
+  "hazard_ratios": [],
+  "time_to_default_months": null,
+  "risk_analysis": {
+    "overall_risk_score": 0,
+    "risk_level": "LOW",
+    "risk_breakdown": {
+      "credit_risk": 0,
+      "capacity_risk": 0,
+      "liquidity_risk": 0,
+      "character_risk": 0
+    },
+    "critical_risk_factors": [],
+    "confidence_score": 0.7882148869802241,
+    "recommendations": [
+      "Proceed with standard approval process",
+      "Regular monitoring schedule"
+    ]
+  },
+  "overall_risk_score": 0,
+  "risk_breakdown": {
+    "credit_risk": 0,
+    "capacity_risk": 0,
+    "liquidity_risk": 0,
+    "character_risk": 0
+  },
+  "critical_risk_factors": [],
+  "risk_recommendations": [
+    "Proceed with standard approval process",
+    "Regular monitoring schedule"
+  ],
+  "ability_to_pay_score": 35,
+  "willingness_to_pay_score": 67,
+  "combined_atp_wtp_score": null,
+  "atp_wtp_analysis": {
+    "score": 35,
+    "factors": [],
+    "confidence": 0.6499999999999999,
+    "assessment": "Poor"
+  },
+  "explainability": {},
+  "reason_codes": [],
+  "feature_importance": {},
+  "feature_completeness": {
+    "is_valid": false,
+    "completeness": {
+      "overall_completeness": 0,
+      "total_features": 0,
+      "collected_features": 0,
+      "missing_features": 0,
+      "categories": {}
+    },
+    "min_completeness_required": 0.7,
+    "meets_threshold": false,
+    "missing_features": [],
+    "default_features": [
+      "core_credit_performance.credit_history_length_months",
+      "core_credit_performance.tenure_with_akafay_months",
+      "core_credit_performance.prior_loans_count_akafay",
+      "core_credit_performance.delinquency_30d_count_12m",
+      "core_credit_performance.delinquency_60d_count_12m",
+      "core_credit_performance.delinquency_90d_count_12m",
+      "contextual_and_macroeconomic_factors.inflation_rate_recent"
+    ],
+    "recommendations": []
+  },
+  "nbe_compliance_status": {
+    "one_third_rule": "pass",
+    "one_third_rule_details": {
+      "monthly_payment": 83.33333333333333,
+      "max_affordable_payment": 10000,
+      "monthly_income": 30000,
+      "compliant": true
+    },
+    "interest_rate_range": {
+      "min": 0.12,
+      "max": 0.25
+    },
+    "loan_amount_limits": {
+      "min": 1000,
+      "max": 5000000
+    },
+    "overall_compliance": "pass"
+  },
+  "market_context": {},
+  "product_recommendations": [
+    {
+      "product_type": "Personal Loan",
+      "product_key": "personal_loan",
+      "eligible": true,
+      "credit_score": 580,
+      "risk_level": "high",
+      "max_amount": 119880,
+      "recommended_amount": 71928,
+      "suitability_score": 65,
+      "key_benefits": [
+        "Flexible loan amounts (5K - 5M ETB)",
+        "Terms up to 60 months",
+        "Purpose-based rates",
+        "Collateral or guarantor options",
+        "NBE-compliant terms"
+      ],
+      "product_specific_data": {
+        "loan_purpose": "General assessment",
+        "purpose_risk_score": 0,
+        "max_loan_amount": 119880,
+        "recommended_amount": 71928,
+        "monthly_payment_capacity": 9990,
+        "affordability_assessment": "comfortable"
+      }
+    }
+  ],
+  "product_limits": {
+    "Personal Loan": {
+      "product_type": "Personal Loan",
+      "customer_id": "CUST_0001",
+      "max_amount": 119880,
+      "recommended_amount": 71928,
+      "min_amount": 5000,
+      "calculation_breakdown": {
+        "max_monthly_payment": 9990,
+        "existing_monthly_debt": 0,
+        "available_payment_capacity": 9990,
+        "loan_term_months": 12,
+        "from_payment_capacity": 119880,
+        "from_income_multiple": 1800000,
+        "base_max_amount": 119880,
+        "atp_score": 50,
+        "wtp_score": 50,
+        "combined_atp_wtp": 0.5,
+        "atp_wtp_multiplier": 1,
+        "atp_multiplier": 0.6000000000000001,
+        "nbe_limit": 5000000
+      },
+      "atp_score_used": null,
+      "wtp_score_used": null,
+      "timestamp": "2025-11-30T18:01:02.244316"
+    }
+  },
+  "product_pricing": {
+    "Personal Loan": {
+      "interest_rate": 17.2,
+      "apr": 18.06,
+      "monthly_payment": 6567,
+      "total_repayment": 78804.05,
+      "pricing_tier": "basic",
+      "nbe_compliant": true,
+      "pricing_details": {
+        "credit_score": 600,
+        "loan_amount": 71928,
+        "loan_term_months": 12,
+        "risk_tier": "medium"
+      },
+      "valid_until": null
+    }
+  },
+  "final_decision": "requires_review",
+  "decision_reason": "All risk factors within acceptable range",
+  "approval_status": "requires_review",
+  "processing_time_ms": 2241,
+  "services_called": [
+    "fraud_detection",
+    "credit_scoring",
+    "risk_assessment"
+  ],
+  "assessment_id": "ASSESS_507445F11F79",
+  "error_details": {
+    "default_prediction": "Logger._log() got an unexpected keyword argument 'customer_id'"
+  },
+  "tier_availability": {
+    "tier1": false,
+    "tier2": false,
+    "tier4": false,
+    "psychometric": false
+  },
+  "tier_improvement_recommendations": [
+    "Provide mobile money history and utility bills for better assessment",
+    "Enable SMS and app permissions for enhanced credit scoring",
+    "Complete psychometric assessment for willingness to pay analysis"
+  ]
+}
+

@@ -7,7 +7,7 @@ ACTION="start"        # build | start | stop | restart | status | logs | test
 ENV_FILE=".env"
 TAG="credisynth-qaa:local"
 CONTAINER="credisynth-qaa"
-PORT="7000"
+PORT="5000"
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOGS_DIR="$ROOT_DIR/logs"
@@ -44,9 +44,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Auto-select a free port in 7000–7099 by default if not specified
-PORT_RANGE_START=7000
-PORT_RANGE_END=7099
+# Auto-select a free port in 5000–5099 by default if not specified
+PORT_RANGE_START=5000
+PORT_RANGE_END=5099
 is_port_in_use() {
   local p="$1"
   ss -ltn | awk '{print $4}' | grep -E "(^|:)${p}$" >/dev/null 2>&1
@@ -91,8 +91,11 @@ ensure_venv() {
 start_local() {
   ensure_venv
   echo "Starting local API on port $PORT"
+  # Set MOCK_MODE=true by default for local development if not already set
+  export MOCK_MODE="${MOCK_MODE:-true}"
+  echo "MOCK_MODE=$MOCK_MODE"
   # shellcheck disable=SC1091
-  nohup bash -c "source \"$ROOT_DIR/.venv/bin/activate\" && uvicorn app.main:app --host 0.0.0.0 --port $PORT --reload" >"$LOG_FILE" 2>&1 &
+  nohup bash -c "source \"$ROOT_DIR/.venv/bin/activate\" && export MOCK_MODE=$MOCK_MODE && uvicorn app.main:app --host 0.0.0.0 --port $PORT --reload" >"$LOG_FILE" 2>&1 &
   echo $! > "$PID_FILE"
   echo "$PORT" > "$PORT_FILE"
   echo "Started. PID: $(cat "$PID_FILE") Port: $PORT Logs: $LOG_FILE"
@@ -151,7 +154,7 @@ start_docker() {
     exit 1
   fi
   echo "Starting Docker container $CONTAINER on host port $PORT -> container 7000"
-  docker run -d --name "$CONTAINER" -p "$PORT:7000" --env-file "$ROOT_DIR/$ENV_FILE" "$TAG"
+  docker run -d --name "$CONTAINER" -p "$PORT:5000" --env-file "$ROOT_DIR/$ENV_FILE" "$TAG"
 }
 
 stop_docker() {

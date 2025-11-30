@@ -7,13 +7,17 @@ info:
     Outcomes: Faster decisions, consistent narratives across cases, robust audit trail,
     compliance alignment, and operational SLAs.
 servers:
-  - url: http://localhost:7010
+  - url: http://localhost:5000
+    description: Local development server
+  - url: http://localhost:5003
+    description: Auto-selected port (check logs/.local_api.port)
+
 paths:
   /health:
     get:
       tags: [Health]
       summary: Service health
-      summary: Health check
+      description: Returns service health status with version and configuration details
       responses:
         '200':
           description: Service is healthy
@@ -24,19 +28,67 @@ paths:
                 properties:
                   status:
                     type: string
+                    example: "ok"
                   version:
                     type: string
+                    example: "1.0.0"
+                  details:
+                    type: object
+                    properties:
+                      db:
+                        type: string
+                        enum: [enabled, disabled]
+                      mock_mode:
+                        type: boolean
+
+  /ready:
+    get:
+      tags: [Health]
+      summary: Service readiness
+      description: Checks if service is ready to accept requests (DB and model availability)
+      responses:
+        '200':
+          description: Service readiness status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ready:
+                    type: boolean
+                  db_ready:
+                    type: boolean
+                  model_ready:
+                    type: boolean
+
+  /metrics:
+    get:
+      tags: [Observability]
+      summary: Prometheus metrics
+      description: Exposes Prometheus metrics for monitoring
+      responses:
+        '200':
+          description: Prometheus metrics in text format
+          content:
+            text/plain:
+              schema:
+                type: string
+
   /v1/analyze:
     post:
       tags: [Analysis]
       summary: Analyze QSE report to produce extended qualitative synthesis
+      description: |
+        Accepts a QSE (Quantitative Scoring Engine) report and returns a comprehensive
+        qualitative analysis including executive summary, risk assessment, explainability,
+        and final recommendation.
       parameters:
         - in: header
           name: X-Correlation-ID
           required: false
           schema:
             type: string
-          description: Optional correlation ID for audit/tracing
+          description: Optional correlation ID for audit/tracing (auto-generated if not provided)
       requestBody:
         required: true
         content:
@@ -47,7 +99,7 @@ paths:
               complete_sample:
                 summary: Complete sample aligned to QSE output
                 value:
-                  $ref: "../sample_request.json"
+                  $ref: "../examples/sample_request.json"
       responses:
         '200':
           description: Extended qualitative synthesis
@@ -55,13 +107,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/QAAExtendedResponse"
-              examples:
-                example_response:
-                  summary: Example extended qualitative report
-                  value:
-                    $ref: "../sample_response.json"
+        '400':
+          description: Bad request (malformed JSON)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         '422':
-          description: Validation error
+          description: Validation error (missing or invalid fields)
           content:
             application/json:
               schema:
@@ -78,6 +131,126 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/analyze/{analysis_id}:
+    get:
+      tags: [Analysis]
+      summary: Retrieve a stored analysis
+      description: Retrieves a previously stored analysis by ID (requires database auditing to be enabled)
+      parameters:
+        - in: path
+          name: analysis_id
+          required: true
+          schema:
+            type: string
+          description: The analysis ID returned from a previous analyze request
+      responses:
+        '200':
+          description: Stored analysis response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QAAExtendedResponse"
+        '404':
+          description: Analysis not found or auditing disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Lookup error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/analyze/async:
+    post:
+      tags: [Analysis]
+      summary: Submit analysis job asynchronously
+      description: Submits an analysis job for asynchronous processing (returns job ID for tracking)
+      parameters:
+        - in: header
+          name: X-Correlation-ID
+          required: false
+          schema:
+            type: string
+          description: Optional correlation ID for audit/tracing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QSEReportInput"
+      responses:
+        '202':
+          description: Job queued successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    example: "queued"
+                  correlation_id:
+                    type: string
+                    format: uuid
+
+  /v1/jobs/{job_id}:
+    get:
+      tags: [Analysis]
+      summary: Poll an async job status
+      description: Retrieves the status of an asynchronous analysis job
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The job ID returned from /v1/analyze/async
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [pending, queued, processing, completed, failed]
+
+  /v1/models:
+    get:
+      tags: [Explainability]
+      summary: List active model version and health
+      description: Returns information about the active AI model and its health status
+      responses:
+        '200':
+          description: Model information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  active_model:
+                    type: string
+                    example: "models/gemini-2.5-flash"
+                  last_refresh:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  health:
+                    type: string
+                    example: "ok"
+
 components:
   schemas:
     QSEReportInput:
@@ -86,11 +259,14 @@ components:
       properties:
         request_id:
           type: string
+          description: Unique identifier for this QSE request
         customer_id:
           type: string
+          description: Customer identifier
         correlation_id:
           type: string
           nullable: true
+          description: Correlation ID for tracing (optional)
         locale:
           type: string
           description: BCP 47 tag like 'en', 'am', 'en-US'
@@ -173,35 +349,35 @@ components:
           additionalProperties: true
           nullable: true
         explainability:
-          type: object
-          properties:
-            risk_factors:
-              type: array
-              items:
-                $ref: "#/components/schemas/ShapFactor"
-            confidence_factors:
-              type: array
-              items:
-                $ref: "#/components/schemas/ShapFactor"
-            global_importance_order:
-              type: array
-              items:
-                type: string
+          $ref: "#/components/schemas/ShapAnalysis"
           nullable: true
         risk_analysis:
-          type: object
-          properties:
-            scenarios:
-              type: array
-              items:
-                $ref: "#/components/schemas/RiskScenario"
-            default_probability:
-              type: number
+          $ref: "#/components/schemas/RiskAnalysis"
           nullable: true
         nbe_compliance_status:
           $ref: "#/components/schemas/NBECompliance"
+          nullable: true
         additional_insights:
           $ref: "#/components/schemas/AdditionalInsights"
+          nullable: true
+
+    ShapAnalysis:
+      type: object
+      properties:
+        risk_factors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShapFactor"
+        confidence_factors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShapFactor"
+        global_importance_order:
+          type: array
+          items:
+            type: string
+          nullable: true
+
     ShapFactor:
       type: object
       properties:
@@ -212,6 +388,19 @@ components:
         direction:
           type: string
           enum: [positive, negative]
+
+    RiskAnalysis:
+      type: object
+      properties:
+        scenarios:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskScenario"
+        default_probability:
+          type: number
+          format: float
+          nullable: true
+
     RiskScenario:
       type: object
       properties:
@@ -222,6 +411,7 @@ components:
         severity:
           type: string
           enum: [Low, Medium, High]
+
     NBECompliance:
       type: object
       properties:
@@ -232,6 +422,7 @@ components:
           type: array
           items:
             type: string
+
     AdditionalInsights:
       type: object
       properties:
@@ -242,11 +433,14 @@ components:
           type: array
           items:
             type: string
+
     ErrorResponse:
       type: object
       properties:
         detail:
           type: string
+          description: Error message or validation details
+
     QAAQualitativeReport:
       type: object
       required:
@@ -265,21 +459,30 @@ components:
           description: Customer ID from QSE report
         executive_summary:
           type: string
+          description: 3–4 sentence C-level summary
         ability_to_repay:
           type: string
+          description: Plain-English capacity analysis
         willingness_to_repay:
           type: string
+          description: Plain-English intent analysis
         key_risk_synthesis:
           type: string
+          description: Actionable warning synthesis
         key_strengths_synthesis:
           type: string
+          description: Positive factors synthesis
         nbe_compliance_summary:
           type: string
+          description: 'COMPLIANT' or 'NON-COMPLIANT: [Reason]'
         final_recommendation:
           type: string
-          enum: [Approve, Approve with Conditions, Manual Review, Decline]
+          enum: [Approve, "Approve with Conditions", "Manual Review", Decline]
+          description: Final recommendation
         recommendation_justification:
           type: string
+          description: Final paragraph justification
+
     QAAExtendedResponse:
       type: object
       properties:
@@ -301,6 +504,7 @@ components:
           nullable: true
         default_probability:
           type: number
+          format: float
           nullable: true
         confidence_score:
           type: number
@@ -350,6 +554,7 @@ components:
           nullable: true
         timestamp:
           type: string
+          format: date-time
           nullable: true
         additional_insights:
           type: object
@@ -357,10 +562,37 @@ components:
           nullable: true
         qaa_report:
           $ref: "#/components/schemas/QAAQualitativeReport"
+        scores:
+          $ref: "#/components/schemas/Scores"
         links:
           type: array
           items:
             $ref: "#/components/schemas/LinkItem"
+          nullable: true
+
+    Scores:
+      type: object
+      properties:
+        credit_score:
+          type: integer
+          minimum: 300
+          maximum: 850
+          nullable: true
+        default_probability:
+          type: number
+          format: float
+          nullable: true
+        overall_risk_score:
+          type: number
+          nullable: true
+        ensemble_confidence:
+          type: number
+          nullable: true
+        approval_probability:
+          type: number
+          format: float
+          nullable: true
+
     LinkItem:
       type: object
       required: [rel, href]
@@ -372,81 +604,3 @@ components:
         title:
           type: string
           nullable: true
-        scores:
-          type: object
-          properties:
-            credit_score:
-              type: integer
-              minimum: 300
-              maximum: 850
-            default_probability:
-              type: number
-            overall_risk_score:
-              type: number
-            ensemble_confidence:
-              type: number
-            approval_probability:
-              type: number
-  /v1/analyze/async:
-    post:
-      tags: [Analysis]
-      summary: Submit analysis job asynchronously
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/QSEReportInput"
-      responses:
-        '202':
-          description: Job queued
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  job_id:
-                    type: string
-                  status:
-                    type: string
-  /v1/jobs/{job_id}:
-    get:
-      tags: [Analysis]
-      summary: Poll an async job status
-      parameters:
-        - in: path
-          name: job_id
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Job status
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  job_id:
-                    type: string
-                  status:
-                    type: string
-  /v1/models:
-    get:
-      tags: [Explainability]
-      summary: List active model version and health
-      responses:
-        '200':
-          description: Model info
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  active_model:
-                    type: string
-                  last_refresh:
-                    type: string
-                    nullable: true
-                  health:
-                    type: string
